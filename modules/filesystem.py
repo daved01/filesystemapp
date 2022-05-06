@@ -1,4 +1,5 @@
 import datetime
+import os
 
 import modules.tree
 
@@ -19,23 +20,48 @@ class Folder(modules.tree.TreeNode):
 class FileSystem:
     def __init__(self)-> None:
         self._root = Folder() # Emtpy top level root folder
+        self._filetypes = {"txt": "text", "pdf": "text", "csv": "text",
+                            "png": "image", "jpg": "image", "jpeg": "image"}
     
 
     def dfs(self, node: object, level=-1) -> None:
         if not node:
             return
-        if level >= 0:
-            print("   " * level, "|-", node._name)
+        if level >= 0:     
+            if type(node) == File:
+                print("   " * level, "|-", node._name, " (",node._timestamp.strftime('%Y/%d/%m-%H:%m:%S'), ", ", node._type, ",", node._size, "kB )")
+            else:
+                print("   " * level, "|-", node._name)
         if type(node) == Folder and node._children:
             for child in node._children.keys():
                 self.dfs(node._children[child], level+1)
+    
 
+    def get_file_paths(self, path_in: str) -> list[(str, float)]:
+        """
+        Returns list of full paths to all files at given path.
+        Does not return path for empty folder.
+        """
+        paths_out = []
+        for (path, dirs, files) in os.walk(path_in):
+            for file in files:
+                if file[0] != ".":
+                    curr_path = path + "/" +file
+                    curr_size = os.path.getsize(curr_path)
+                    paths_out.append((curr_path, float(curr_size/1000))) # File size in kBs
+        return paths_out
      
-    def add(self, paths: list[str]) -> None:
+
+    def add(self, paths: list[(str, float)]) -> None:
         """
         Takes list of paths and adds them to the tree.
         """
-        for path in paths:
+        for raw_path in paths:
+            path, size = raw_path[0], raw_path[1]
+
+            # Remove leading slash symbol.
+            if path[0] == "/":
+                path = "".join(path[1:])
             raws = path.split("/")
             curr_node = self._root
 
@@ -46,7 +72,12 @@ class FileSystem:
                     if raw in curr_node._children:
                         print(f"File {raw} already exists!")
                     else:
-                        new_node = File("text", 16, timestamp)
+                        ext = raw.split(".")[1]
+                        if ext in self._filetypes:
+                            filetype = self._filetypes[ext]
+                        else:
+                            filetype = "other"
+                        new_node = File(filetype, size, timestamp)
                         new_node._name = raw
                         curr_node._children[raw] = new_node
                 # Folder
