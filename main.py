@@ -6,17 +6,7 @@ import os.path
 import modules.filesystem as fs
 
 
-
 if __name__== "__main__":  
-    parser = argparse.ArgumentParser(description="File application app")
-    parser.add_argument('--add', default=None, help="Select path to add")
-    parser.add_argument('--delete', default=None, help="Select path to delete. Deletes all subfolders and files.")
-    parser.add_argument('--view', default=None, help="Shows all subfolders and files.")
-    # TODO: How to do filter with multiple options?
-
-    args = parser.parse_args()
-
-
     # Load data if exists.
     filename = './data/data.pkl'  
     if os.path.exists(filename):
@@ -25,19 +15,32 @@ if __name__== "__main__":
     else:
         filesystem = fs.FileSystem()
 
+    # Parse arguments.
+    parser = argparse.ArgumentParser(description="File application app.")
+    parser.add_argument("command", choices = ["add", "view", "filter", "delete"], type=str, help="Command for app.")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-p", "--path", default=None, help="Provide full path")
+    group.add_argument("-f", "--filter", choices=["type", "name"], default=None)
 
-    # Get this list from some other function that traverses paths.
-    new_files = ["base/file1.txt", "base/folder2/file2.txt", "base2/file14.txt"]
-    filesystem.add(new_files)
+    args = parser.parse_args()
 
-    filesystem.view()
+    if args.command == "view":
+        filesystem.view()
 
+    elif args.command == "add" and args.path:
+        file_paths = filesystem.get_file_paths(args.path)
+        filesystem.add(file_paths)
+    
+    elif args.command == "filter":
+        print("Filter")
+        if args.name:
+            print("Name")
+        elif args.type:
+            print("Type")
 
-    filesystem.delete("base")
-
-
-    filesystem.view()
-
+    elif args.command == "delete" and args.path:
+        filesystem.delete(args.path)
+    
     # Save changes
     filehandler = open(filename, 'wb')
     pickle.dump(filesystem, filehandler)
