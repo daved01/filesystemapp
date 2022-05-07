@@ -1,5 +1,6 @@
 import datetime
 import os
+import logging
 
 import modules.tree
 
@@ -49,6 +50,7 @@ class FileSystem:
                     curr_path = path + "/" +file
                     curr_size = os.path.getsize(curr_path)
                     paths_out.append((curr_path, float(curr_size/1000))) # File size in kBs
+                    logging.debug(f"Read path: {curr_path}")
         return paths_out
      
 
@@ -58,6 +60,7 @@ class FileSystem:
         """
         for raw_path in paths:
             path, size = raw_path[0], raw_path[1]
+            logging.debug(f"Added path: {path}")
 
             # Remove leading slash symbol.
             if path[0] == "/":
@@ -70,25 +73,29 @@ class FileSystem:
                 # File
                 if len(raw.split(".")) == 2:
                     if raw in curr_node._children:
-                        print(f"File {raw} already exists!")
+                        logging.warning(f"File {raw} already exists!")
                     else:
                         ext = raw.split(".")[1]
                         if ext in self._filetypes:
                             filetype = self._filetypes[ext]
                         else:
                             filetype = "other"
+                        logging.debug(f"Found filetype {filetype}")
                         new_node = File(filetype, size, timestamp)
                         new_node._name = raw
                         curr_node._children[raw] = new_node
+                        logging.debug(f"Added file {raw}")
                 # Folder
                 else:
                     if raw in curr_node._children:
                         curr_node = curr_node._children[raw]
+                        logging.debug(f"Folder {raw} already exists, skipping...")
                     else:
                         new_node = Folder(timestamp)
                         new_node._name = raw
                         curr_node._children[raw] = new_node
                         curr_node = new_node
+                        logging.debug(f"Added folder {raw}")
                     
 
     def filter(self, name=None) -> list[str]:
@@ -100,16 +107,21 @@ class FileSystem:
         """
         Deletes file or folder at path.
         """
+        path = path[1:]
         path_list = path.split("/")
         curr_node = self._root
 
-        for i in range(len(path_list)-1):
-            path = path_list[i]
-            curr_node = curr_node._children[path]
-        del curr_node._children[path_list[-1]]
+        try:
+            for i in range(len(path_list)-1):
+                path = path_list[i] 
+                curr_node = curr_node._children[path]
+               
+            del curr_node._children[path_list[-1]]
+        except KeyError:
+            logging.error("Error! Given path does not exist.")
+                    
+        logging.debug(f"Deleted node {path_list[-1]}")
            
-
-    
 
     def view(self) -> None:
         # Full tree view
